@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { renderToNodeStream } from "react-dom/server";
 import Swal from "sweetalert2";
 
 
@@ -6,93 +7,68 @@ const Home = () => {
 
 
   const API_URL = "https://playground.4geeks.com/todo"
-  const USER = "Troglodita"
+  const USER = "Cabra"
  
   const [tarea, setTarea] = useState ("")
   const [lista, setLista] = useState ([])
 
 
-  console.log(lista);
-
-
   const handleInputChange = (e) => {
 
-
     console.log(e);
-   
-
-
-    setLista({
-      ...lista,
-      [e.target.name]: e.target.value
-    })
+  
+    setTarea(e.target.value)
   }
 
 
-  const handleSubmit = (e) => {
+const handleSubmit = async (e) => {
   e.preventDefault();
 
-
-  if (!lista) {
+  if (tarea.trim() === "") {
     Swal.fire({
       icon: "error",
       title: "Oops...",
-      text: "No tienes nada en la lista",
+      text: "No puedes crear una tarea vacía"
     });
     return;
   }
 
-
-  createTarea();
+  await createTarea();
+  setTarea("");
 };
- 
 
-
-  const getCharacter = async () => {
-
+  const getTareas = async () => {
 
     const response = await fetch(`${API_URL}/users/${USER}`)
-    console.log(response);
-
 
     if (!response.ok) {
-      console.log("Debes crear un Usuario");
-      createUser ()
+     
+      await createUser ()
+      getTareas()
       return
      
     }
    
     const data = await response.json()
-    console.log(data);
-    setTarea(data)
+    setLista(data.todos)
    
   }
 
 
     const createUser = async () => {
 
-
     const response = await fetch(`${API_URL}/users/${USER}`,{
       method: "POST"
     })
-    console.log(response);
-
-
-    if (!response.ok) {
-      console.log("Debes crear un Usuario");
-      return
-    }
-    const data = await response.json()
-    console.log(data);
   }
 
 
 const createTarea = async () => {
+
   const nuevaTarea = {
-    label: lista,
+    label: tarea, 
     is_done: false
   };
-
 
   const response = await fetch(`${API_URL}/todos/${USER}`, {
     method: "POST",
@@ -101,10 +77,24 @@ const createTarea = async () => {
       "Content-Type": "application/json"
     }
   });
+  if (response.ok) {
 
+    getTareas()
+    
+  }
 
-  const data = await response.json();
-  console.log(data);
+};
+
+const deleteTarea = async (id) => {
+  const response = await fetch(`${API_URL}/todos/${id}`, {
+    method: "DELETE"
+  });
+
+  if (response.ok) {
+    getTareas(); 
+  } else {
+    console.log("Error al borrar la tarea");
+  }
 };
  
 
@@ -114,7 +104,7 @@ const createTarea = async () => {
   useEffect (() => {
 
 
-    getCharacter();
+    getTareas();
 
 
   },[])
@@ -129,18 +119,17 @@ const createTarea = async () => {
         <input
           type="text"
           placeholder="Escribe tu tarea"
-          value={lista}
+          value={tarea}
           onChange={handleInputChange}
          
         />
 
 
         <ul>
-          {lista.map((item, index) => (
-            <li key={index}>
-              {item}
-            </li>
-          ))}
+          {lista.map((item, index) => {
+          return <li key={index}>{item.label}<button type="button" onClick={() => deleteTarea(item.id)}>X</button></li>
+          }
+          )}
         </ul>
    
       </form>
